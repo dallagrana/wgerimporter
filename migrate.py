@@ -1,54 +1,10 @@
 #!/usr/bin/env python3
-"""
-wger data migration script
-==========================
-Migrates all personal data from one wger instance to another using the REST API.
-
-Covered endpoints (in order):
-  1.  Weight entries
-  2.  Measurement categories
-  3.  Measurements
-  4.  Nutrition plans
-  5.  Meals
-  6.  Meal items
-  7.  Nutrition diary
-  8.  Routines, days, slots, and slot entries
-  9.  Slot configs (weight / reps / sets / rest / RIR, including max variants)
-  10. Workout sessions and logs
-
-Requirements:
-  pip install requests
-
-Usage:
-  1. Set the four constants below (REMOTE_BASE, LOCAL_BASE,
-     REMOTE_TOKEN, LOCAL_TOKEN).
-  2. Run:  python migrate.py
-
-Notes:
-  - The script is intentionally read-only on the remote side and
-    write-only on the local side; it never modifies the source.
-  - Ingredients are referenced by their global wger ID and are not
-    migrated (they are assumed to exist on the target instance via
-    the built-in ingredient database or a prior sync).
-  - Exercises are also referenced by ID and assumed to exist on the
-    target instance.
-  - Running the script twice will create duplicate entries. There is
-    no upsert / dedup logic — clean the target first if needed.
-"""
-
 import requests
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-# Base URLs for the source (remote) and destination (local) wger instances.
-# No trailing slash.
-REMOTE_BASE = "https://wger.de/api/v2"          # source instance
-LOCAL_BASE  = "http://<YOUR_LOCAL_HOST>/api/v2"  # destination instance
-
-# API tokens.  Generate them at:
-#   <instance>/en/user/<id>/trainer-login  →  API tab  →  "Generate new token"
+REMOTE_BASE  = "https://wger.de/api/v2"          # source instance
+LOCAL_BASE   = "http://<YOUR_LOCAL_HOST>/api/v2"  # destination instance
 REMOTE_TOKEN = "<YOUR_REMOTE_API_TOKEN>"
 LOCAL_TOKEN  = "<YOUR_LOCAL_API_TOKEN>"
-# ──────────────────────────────────────────────────────────────────────────────
 
 remote_h = {"Authorization": f"Token {REMOTE_TOKEN}"}
 local_h  = {"Authorization": f"Token {LOCAL_TOKEN}", "Content-Type": "application/json"}
@@ -65,7 +21,6 @@ session_map    = {}
 
 
 def fetch_all(base, endpoint, headers):
-    """Fetch every page of a paginated API endpoint and return a flat list."""
     items, url = [], f"{base}/{endpoint}/?format=json&limit=100"
     while url:
         for attempt in range(4):
@@ -86,7 +41,6 @@ def fetch_all(base, endpoint, headers):
 
 
 def post(endpoint, payload):
-    """POST payload to the local instance, stripping None values first."""
     clean = {k: v for k, v in payload.items() if v is not None}
     r = requests.post(f"{LOCAL_BASE}/{endpoint}/", headers=local_h, json=clean, timeout=30)
     if not r.ok:
